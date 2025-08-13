@@ -3,106 +3,71 @@
 import paho.mqtt.client as mqtt
 import pygame
 import sys
-import threading
-import time
 
-# -----------------------------
-# MQTT broker configuration
-# -----------------------------
-BROKER_IP = "192.160.100.191"  # <-- Change to your Pi's IP
+# --- SETTINGS ---
+BROKER_IP = "192.168.1.100"  # Replace with your broker IP
 TOPIC = "sensor/distance"
 
-# -----------------------------
-# Pygame setup
-# -----------------------------
+# --- Pygame Setup ---
 pygame.init()
 SCREEN_SIZE = (800, 480)
 screen = pygame.display.set_mode(SCREEN_SIZE)
-pygame.display.set_caption('Distance Controlled Display')
+pygame.display.set_caption("Distance Display")
 font = pygame.font.SysFont(None, 48)
 
-# Global variables
 current_distance = None
-last_update_time = 0  # track last time MQTT data arrived
 
-# -----------------------------
-# Drawing function
-# -----------------------------
-def draw_color_for_distance(dist):
-    screen.fill((30, 30, 30))  # default background
-
-    if dist is None:
-        label = font.render('Waiting for data...', True, (200, 200, 200))
-        screen.blit(label, (40, SCREEN_SIZE[1]//2 - 24))
+# --- Drawing Function ---
+def draw_display():
+    screen.fill((30, 30, 30))  # default gray
+    if current_distance is None:
+        label = font.render("Waiting for data...", True, (200, 200, 200))
     else:
-        if dist < 20:
-            color = (200, 30, 30)  # red
-            text = f'Very Close (<20 cm) - {dist} cm'
-        elif dist < 50:
-            color = (220, 180, 30)  # yellow
-            text = f'Near (20-50 cm) - {dist} cm'
+        if current_distance < 20:
+            color = (200, 30, 30)
+            text = f"Very Close ({current_distance} cm)"
+        elif current_distance < 50:
+            color = (220, 180, 30)
+            text = f"Near ({current_distance} cm)"
         else:
-            color = (40, 180, 60)  # green
-            text = f'Far (>50 cm) - {dist} cm'
-
+            color = (40, 180, 60)
+            text = f"Far ({current_distance} cm)"
         screen.fill(color)
         label = font.render(text, True, (0, 0, 0))
-        screen.blit(label, (40, SCREEN_SIZE[1]//2 - 24))
-
+    screen.blit(label, (40, SCREEN_SIZE[1]//2 - 24))
     pygame.display.flip()
 
-# -----------------------------
-# MQTT Callbacks
-# -----------------------------
+# --- MQTT Callbacks ---
 def on_connect(client, userdata, flags, rc):
-    print('Connected to MQTT broker with result code ' + str(rc))
+    print("Connected to MQTT broker, code:", rc)
     client.subscribe(TOPIC)
 
 def on_message(client, userdata, msg):
-    global current_distance, last_update_time
+    global current_distance
     try:
-        payload = msg.payload.decode()
-        dist = int(payload)
-        current_distance = dist
-        last_update_time = time.time()
-        print(f"MQTT Received: {dist} cm")
-    except Exception as e:
-        print('Error parsing message:', e)
+        current_distance = int(msg.payload.decode())
+        print(f"Received distance: {current_distance} cm")
+    except ValueError:
+        print("Invalid distance value")
 
-# -----------------------------
-# MQTT Client setup
-# -----------------------------
+# --- MQTT Setup ---
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
+client.connect(BROKER_IP, 1883, 60)
+client.loop_start()  # non-blocking loop
 
-try:
-    client.connect(BROKER_IP, 1883, 60)
-except Exception as e:
-    print("MQTT connection failed:", e)
-    sys.exit(1)
-
-mqtt_thread = threading.Thread(target=client.loop_forever)
-mqtt_thread.daemon = True
-mqtt_thread.start()
-
-# -----------------------------
-# Main Loop
-# -----------------------------
+# --- Main Loop ---
 try:
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit(0)
-
-        # Show 'No recent data' if more than 5 seconds without update
-        if current_distance is not None and (time.time() - last_update_time > 5):
-            current_distance = None
-
-        draw_color_for_distance(current_distance)
-        pygame.time.wait(200)
-
+                client.loop_stop()
+                sys.exit()
+        draw_display()
+        pygame.time.wait(100)  # update every 100ms
 except KeyboardInterrupt:
     pygame.quit()
-    sys.exit(0)
+    client.loop_stop()
+    sys.exit()
