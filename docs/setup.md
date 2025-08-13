@@ -1,9 +1,10 @@
 ---
 layout: docs
 title: Setup — Hardware & Software
+description: ESP32 + Raspberry Pi Interactive Distance Display
 ---
 
-<div class="card my-4 p-3 shadow-sm">
+<div class="card panel">
   <h2>Bill of Materials</h2>
   <ul>
     <li>ESP32 development board</li>
@@ -15,53 +16,49 @@ title: Setup — Hardware & Software
   </ul>
 </div>
 
-<hr class="my-4">
+<hr>
 
-<h2>Wiring (ESP32 + HC-SR04)</h2>
+### Wiring (ESP32 + HC-SR04)
+
 <ul>
-  <li>VCC (HC-SR04) &rarr; 5V or 3.3V depending on your module (many accept 5V)</li>
-  <li>GND &rarr; GND</li>
-  <li>TRIG &rarr; GPIO 5</li>
-  <li>ECHO &rarr; GPIO 18 <em>(use voltage divider if ECHO is 5V!)</em></li>
+  <li>VCC (HC-SR04) → 5V or 3.3V depending on your module (many accept 5V)</li>
+  <li>GND → GND</li>
+  <li>TRIG → GPIO 5</li>
+  <li>ECHO → GPIO 18 <em>(use a voltage divider if ECHO is 5V)</em></li>
 </ul>
 
-<div class="text-center my-4">
-  <img src="assets/wiring-diagram.png" alt="Wiring diagram ESP32 + HC-SR04" class="img-fluid rounded border" style="max-width: 420px" />
-  <small class="d-block text-muted">ESP32 & HC-SR04 wiring diagram</small>
+<div class="image-center">
+  <img src="/docs/assets/wiring-diagram.png" alt="Wiring diagram ESP32 + HC-SR04" />
+  <small class="muted">ESP32 & HC-SR04 wiring diagram</small>
 </div>
 
-<hr class="my-4">
-
-<div class="alert alert-info" role="alert">
-  <strong>Networking tip:</strong> Both the ESP32 and Raspberry Pi must be on <b>the same local WiFi network</b> for MQTT to work.
+<div class="callout info">
+  <strong>Networking:</strong> Both ESP32 and Raspberry Pi must be on the same local Wi‑Fi network.<br>
+  MQTT broker runs on the Raspberry Pi — update the IP in <code>display_controller.py</code> if needed.
 </div>
-
-<p>MQTT broker runs on Raspberry Pi. In the code we use MQTT broker address <code>192.168.1.100</code> (change in <code>display_controller.py</code> if IP differs).</p>
 
 ---
 
 ## Raspberry Pi — software steps
 
 <div class="code-block">
-  <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent)">Copy</button>
-  <pre><code>sudo apt update && sudo apt upgrade -y
+  <button class="copy-btn" data-target="rp-update">Copy</button>
+  <pre id="rp-update"><code>sudo apt update && sudo apt upgrade -y
 sudo apt install -y mosquitto mosquitto-clients python3-pip
 </code></pre>
 </div>
 
-Next, install Python packages:
-
 <div class="code-block">
-  <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent)">Copy</button>
-  <pre><code>python3 -m pip install paho-mqtt pygame
+  <button class="copy-btn" data-target="rp-pip">Copy</button>
+  <pre id="rp-pip"><code>python3 -m pip install paho-mqtt pygame
 </code></pre>
 </div>
 
-Optional: enable autostart for mosquitto (usually starts automatically). Verify with:
+<p>Verify mosquitto status (optional):</p>
 
 <div class="code-block">
-  <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent)">Copy</button>
-  <pre><code>systemctl status mosquitto
+  <button class="copy-btn" data-target="rp-status">Copy</button>
+  <pre id="rp-status"><code>systemctl status mosquitto
 </code></pre>
 </div>
 
@@ -69,8 +66,6 @@ Optional: enable autostart for mosquitto (usually starts automatically). Verify 
 
 ## ESP32 — software steps
 
-<ol>
-  <li>Install Arduino IDE (or use PlatformIO).</li>
-  <li>Add ESP32 board support and install <code>PubSubClient</code> library.</li>
-  <li>Open <code>code/esp32/distance_sender.ino</code>, fill in your WiFi SSID & password, and upload.</li>
-</ol>
+1. Install Arduino IDE (or use PlatformIO).  
+2. Add ESP32 board support and install the <code>PubSubClient</code> library.  
+3. Open <code>code/esp32/distance_sender.ino</code>, fill your Wi‑Fi SSID &amp; password, and upload.
