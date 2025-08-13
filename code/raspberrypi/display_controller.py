@@ -1,86 +1,93 @@
-#!/usr/bin/env python3
+#include <WiFi.h>
+#include <PubSubClient.h>
 
-import paho.mqtt.client as mqtt
-import pygame
-import sys
-import threading
+// ==== WiFi Config ====
+const char* ssid = "Billwong-TIME";
+const char* password = "Billwong1234";
 
-# MQTT broker configuration
-BROKER_IP = "192.168.1.100"  # <-- set to Pi IP (as requested)
-TOPIC = "sensor/distance"
+// ==== MQTT Config ====
+const char* mqtt_server = "192.168.100.191"; // <-- Pi IP here
+const int mqtt_port = 1883;
+const char* mqtt_topic = "sensor/distance";
 
-# Pygame setup
-pygame.init()
-SCREEN_SIZE = (800, 480)
-screen = pygame.display.set_mode(SCREEN_SIZE)
-pygame.display.set_caption('Distance Controlled Display')
+WiFiClient espClient;
+PubSubClient client(espClient);
 
-# simple text rendering
-font = pygame.font.SysFont(None, 48)
+// Dummy sensor variable (replace with real sensor later)
+int distanceCM = 34;
 
-current_distance = None
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(ssid);
 
-def draw_color_for_distance(dist):
-    if dist is None:
-        screen.fill((30, 30, 30))
-        label = font.render('Waiting for data...', True, (200,200,200))
-        screen.blit(label, (40, SCREEN_SIZE[1]//2 - 24))
-        pygame.display.flip()
-        return
+  WiFi.begin(ssid, password);
 
-    if dist < 20:
-        color = (200, 30, 30)  # red
-        text = 'Very Close (<20 cm)'
-    elif dist < 50:
-        color = (220, 180, 30) # yellow
-        text = 'Near (20-50 cm)'
-    else:
-        color = (40, 180, 60)  # green
-        text = 'Far (>50 cm)'
+  int retries = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+    retries++;
+    if (retries > 30) {  // 15 seconds timeout
+      Serial.println("\nWiFi connection FAILED!");
+      return;
+    }
+  }
 
-    screen.fill(color)
-    label = font.render(f'{text} - {dist} cm', True, (0,0,0))
-    screen.blit(label, (40, SCREEN_SIZE[1]//2 - 24))
-    pygame.display.flip()
+  Serial.println("");
+  Serial.println("WiFi connected ✅");
+  Serial.print("ESP32 IP Address: ");
+  Serial.println(WiFi.localIP());
+}
 
-def on_connect(client, userdata, flags, rc):
-    print('Connected to MQTT broker with result code ' + str(rc))
-    client.subscribe(TOPIC)
+void reconnect() {
+  // Loop until connected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection to ");
+    Serial.print(mqtt_server);
+    Serial.print(":");
+    Serial.println(mqtt_port);
 
-def on_message(client, userdata, msg):
-    global current_distance
-    try:
-        payload = msg.payload.decode()
-        dist = int(payload)
-        current_distance = dist
-        # update display on main thread via event
-        pygame.event.post(pygame.event.Event(pygame.USEREVENT, {'distance': dist}))
-    except Exception as e:
-        print('Error parsing message:', e)
+    if (client.connect("ESP32Client")) {
+      Serial.println("MQTT connected ✅");
+    } else {
+      Serial.print("Failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" -> retry in 5 seconds");
+      delay(5000);
+    }
+  }
+}
 
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
-client.connect(BROKER_IP, 1883, 60)
+void setup() {
+  Serial.begin(115200);
+  setup_wifi();
 
-# Run MQTT client loop in a separate thread
-mqtt_thread = threading.Thread(target=client.loop_forever)
-mqtt_thread.daemon = True
-mqtt_thread.start()
+  client.setServer(mqtt_server, mqtt_port);
+}
 
-# initial display
-draw_color_for_distance(None)
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ WiFi disconnected! Reconnecting...");
+    setup_wifi();
+  }
 
-try:
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit(0)
-            elif event.type == pygame.USEREVENT:
-                dist = event.__dict__.get('distance')
-                draw_color_for_distance(dist)
-        pygame.time.wait(50)
-except KeyboardInterrupt:
-    pygame.quit()
-    sys.exit(0)
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+  // Simulate distance publishing
+  Serial.print("Publishing distance: ");
+  Serial.print(distanceCM);
+  Serial.println(" cm");
+
+  if (!client.publish(mqtt_topic, String(distanceCM).c_str())) {
+    Serial.println("❌ Publish failed! (Check MQTT broker)");
+  } else {
+    Serial.println("✅ Publish success");
+  }
+
+  delay(2000);
+}
