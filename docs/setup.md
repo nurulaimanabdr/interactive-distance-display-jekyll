@@ -1,3 +1,4 @@
+<details><summary>
 ---
 layout: docs
 title: Setup — Hardware & Software
@@ -69,3 +70,4 @@ sudo apt install -y mosquitto mosquitto-clients python3-pip
 1. Install Arduino IDE (or use PlatformIO).  
 2. Add ESP32 board support and install the <code>PubSubClient</code> library.  
 3. Open <code>code/esp32/distance_sender.ino</code>, fill your Wi‑Fi SSID &amp; password, and upload.
+</summary>
