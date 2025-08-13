@@ -1,3 +1,5 @@
+<details>
+  <summary>
 document.addEventListener('DOMContentLoaded', function () {
   // copy buttons tied to data-target or nextElementSibling
   document.querySelectorAll('.copy-btn').forEach(function(btn) {
@@ -27,3 +29,4 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+</summary>
