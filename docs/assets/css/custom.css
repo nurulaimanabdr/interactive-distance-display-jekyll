@@ -1,3 +1,5 @@
+<details>
+<summary>
 :root {
   --bg: #ffffff;
   --muted: #6b7280;
@@ -63,3 +65,4 @@
   cursor: pointer;
 }
 .copy-btn:active { transform: translateY(1px); }
+</summary>
