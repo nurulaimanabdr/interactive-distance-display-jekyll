@@ -24,6 +24,7 @@ SCREEN_SIZE = (800, 480)
 screen = pygame.display.set_mode(SCREEN_SIZE)
 pygame.display.set_caption("Distance Display")
 font = pygame.font.SysFont(None, 48)
+button_font = pygame.font.SysFont(None, 36)
 
 current_distance = None
 connected = False
@@ -32,10 +33,25 @@ reconnect_backoff = RECONNECT_INITIAL
 reconnect_lock = threading.Lock()
 display_enabled = False  # <--- NEW: Start/Stop flag
 
+# --- Button positions ---
+start_button_rect = pygame.Rect(50, SCREEN_SIZE[1] - 70, 120, 50)
+stop_button_rect = pygame.Rect(200, SCREEN_SIZE[1] - 70, 120, 50)
+
+def draw_buttons():
+    """Draw Start and Stop buttons"""
+    pygame.draw.rect(screen, (0, 200, 0), start_button_rect)  # green
+    pygame.draw.rect(screen, (200, 0, 0), stop_button_rect)   # red
+
+    start_label = button_font.render("Start", True, (255, 255, 255))
+    stop_label = button_font.render("Stop", True, (255, 255, 255))
+
+    screen.blit(start_label, (start_button_rect.x + 20, start_button_rect.y + 10))
+    screen.blit(stop_label, (stop_button_rect.x + 25, stop_button_rect.y + 10))
+
 def draw_display():
     screen.fill((30, 30, 30))  # default background
     if not display_enabled:
-        label = font.render("Display stopped (Press S to start)", True, (200, 200, 200))
+        label = font.render("Display stopped (Press Start button)", True, (200, 200, 200))
     elif current_distance is None:
         label = font.render("Waiting for data...", True, (200, 200, 200))
     else:
@@ -58,6 +74,7 @@ def draw_display():
             screen.fill(color)
             label = font.render(text, True, (0, 0, 0))
     screen.blit(label, (40, SCREEN_SIZE[1]//2 - 24))
+    draw_buttons()
     pygame.display.flip()
 
 # --- MQTT Callbacks ---
@@ -128,11 +145,12 @@ try:
                     pass
                 pygame.quit()
                 sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_s:  # Press S to start
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = event.pos
+                if start_button_rect.collidepoint(mouse_pos):
                     display_enabled = True
                     print("Distance display started.")
-                elif event.key == pygame.K_p:  # Press P to stop
+                elif stop_button_rect.collidepoint(mouse_pos):
                     display_enabled = False
                     print("Distance display stopped.")
 
