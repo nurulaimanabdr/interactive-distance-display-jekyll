@@ -5,3 +5,7 @@ Interactive Distance Display (Jekyll Version)
 Scan this QR code to open the GitHub Pages link:
 
 ![QR Code](interactive_distance_display_qr.png)
+
+Scan this QR code to open the GitHub Repo link:
+
+![QR Code](github_repo_qr.png)
