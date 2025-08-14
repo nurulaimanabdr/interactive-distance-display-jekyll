@@ -1,63 +1,72 @@
 import pygame
 import paho.mqtt.client as mqtt
+from PIL import Image
 
-# MQTT Config
-BROKER_IP = "192.168.x.x"  # Replace with your broker IP
+BROKER_IP = "192.168.x.x"  # Replace with broker IP
 PORT = 1883
 TOPIC = "distance"
 
-# Assets
-CLOSE_ANIM = "assets/animation_close.png"  # Use PNG/JPG for static
-FAR_ANIM = "assets/animation_far.png"
+CLOSE_ANIM = "assets/animation_close.gif"
+FAR_ANIM = "assets/animation_far.gif"
 
 pygame.init()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 pygame.display.set_caption("Interactive Space Display")
 font = pygame.font.Font(None, 80)
 
-# Load image safely
-def load_image(path):
+# --- Function to load GIF frames ---
+def load_gif_frames(path):
+    frames = []
     try:
-        return pygame.image.load(path)
-    except Exception as e:
-        print(f"Error loading {path}: {e}")
-        return None
+        pil_img = Image.open(path)
+        while True:
+            frame = pil_img.copy().convert("RGB")
+            mode = frame.mode
+            size = frame.size
+            data = frame.tobytes()
+            py_image = pygame.image.fromstring(data, size, mode)
+            frames.append(py_image)
+            pil_img.seek(len(frames))  # go to next frame
+    except EOFError:
+        pass
+    return frames
 
-close_img = load_image(CLOSE_ANIM)
-far_img = load_image(FAR_ANIM)
-current_img = far_img
+# Load animations
+close_frames = load_gif_frames(CLOSE_ANIM)
+far_frames = load_gif_frames(FAR_ANIM)
+current_frames = far_frames
+frame_index = 0
+frame_delay = 5  # adjust for speed
 
 # MQTT callbacks
 def on_connect(client, userdata, flags, rc):
     client.subscribe(TOPIC)
 
 def on_message(client, userdata, msg):
-    global current_img
+    global current_frames
+    if not running_distance:
+        return
     try:
         distance = float(msg.payload.decode())
         if distance < 50:
-            current_img = close_img
+            current_frames = close_frames
         else:
-            current_img = far_img
+            current_frames = far_frames
     except ValueError:
         pass
 
-# Setup MQTT client
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
+client.connect(BROKER_IP, PORT, 60)
+client.loop_start()
 
 # Buttons
-def draw_button(text, y, color=(0, 128, 255)):
-    button_surf = font.render(text, True, (255, 255, 255))
-    button_rect = button_surf.get_rect(center=(screen.get_width() // 2, y))
-    pygame.draw.rect(screen, color, button_rect.inflate(40, 20))
-    screen.blit(button_surf, button_rect)
-    return button_rect
+start_button = pygame.Rect(600, 400, 300, 120)
+stop_button = pygame.Rect(600, 400, 300, 120)
 
-# Main loop
 running = True
-started = False
+running_distance = False
 
 while running:
     screen.fill((0, 0, 0))
@@ -66,23 +75,24 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = event.pos
-            if not started:
-                if start_btn.collidepoint(mouse_pos):
-                    client.connect(BROKER_IP, PORT, 60)
-                    client.loop_start()
-                    started = True
-            else:
-                if stop_btn.collidepoint(mouse_pos):
-                    running = False
+            if not running_distance and start_button.collidepoint(event.pos):
+                running_distance = True
+            elif running_distance and stop_button.collidepoint(event.pos):
+                running_distance = False
 
-    if not started:
-        start_btn = draw_button("START", screen.get_height() // 2)
+    if not running_distance:
+        pygame.draw.rect(screen, (0, 255, 0), start_button)
+        screen.blit(font.render("START", True, (0, 0, 0)), (start_button.x + 60, start_button.y + 30))
     else:
-        if current_img:
-            screen.blit(pygame.transform.scale(current_img, screen.get_size()), (0, 0))
-        stop_btn = draw_button("STOP", screen.get_height() - 100, color=(200, 0, 0))
+        if current_frames:
+            frame_to_show = current_frames[frame_index // frame_delay]
+            screen.blit(pygame.transform.scale(frame_to_show, screen.get_size()), (0, 0))
+            frame_index = (frame_index + 1) % (len(current_frames) * frame_delay)
+
+        pygame.draw.rect(screen, (255, 0, 0), stop_button)
+        screen.blit(font.render("STOP", True, (255, 255, 255)), (stop_button.x + 70, stop_button.y + 30))
 
     pygame.display.flip()
+    pygame.time.Clock().tick(30)  # 30 FPS
 
 pygame.quit()
