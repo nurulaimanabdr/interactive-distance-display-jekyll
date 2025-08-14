@@ -7,7 +7,7 @@ import time
 import threading
 
 # --- SETTINGS ---
-BROKER_IP = "172.20.10.2"  # Replace with your broker IP
+BROKER_IP = "192.168.1.100"  # Replace with your broker IP
 BROKER_PORT = 1883
 TOPIC = "sensor/distance"
 CLIENT_ID = "distance_display_client"
