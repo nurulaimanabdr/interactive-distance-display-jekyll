@@ -7,7 +7,7 @@ import time
 import threading
 
 # --- SETTINGS ---
-BROKER_IP = "192.168.1.100"  # Replace with your broker IP
+BROKER_IP = "172.20.10.2"  # Replace with your broker IP
 BROKER_PORT = 1883
 TOPIC = "sensor/distance"
 CLIENT_ID = "distance_display_client"
@@ -31,27 +31,27 @@ connected = False
 last_disconnect_time = 0
 reconnect_backoff = RECONNECT_INITIAL
 reconnect_lock = threading.Lock()
-display_enabled = False  # <--- NEW: Start/Stop flag
+display_enabled = False  # Start/Stop flag
 
 # --- Button positions ---
 start_button_rect = pygame.Rect(50, SCREEN_SIZE[1] - 70, 120, 50)
-stop_button_rect = pygame.Rect(200, SCREEN_SIZE[1] - 70, 120, 50)
+stop_button_rect = pygame.Rect(50, SCREEN_SIZE[1] - 70, 120, 50)  # Same place as Start
 
 def draw_buttons():
-    """Draw Start and Stop buttons"""
-    pygame.draw.rect(screen, (0, 200, 0), start_button_rect)  # green
-    pygame.draw.rect(screen, (200, 0, 0), stop_button_rect)   # red
-
-    start_label = button_font.render("Start", True, (255, 255, 255))
-    stop_label = button_font.render("Stop", True, (255, 255, 255))
-
-    screen.blit(start_label, (start_button_rect.x + 20, start_button_rect.y + 10))
-    screen.blit(stop_label, (stop_button_rect.x + 25, stop_button_rect.y + 10))
+    """Draw either Start or Stop button based on state"""
+    if not display_enabled:
+        pygame.draw.rect(screen, (0, 200, 0), start_button_rect)  # green
+        label = button_font.render("Start", True, (255, 255, 255))
+        screen.blit(label, (start_button_rect.x + 25, start_button_rect.y + 10))
+    else:
+        pygame.draw.rect(screen, (200, 0, 0), stop_button_rect)  # red
+        label = button_font.render("Stop", True, (255, 255, 255))
+        screen.blit(label, (stop_button_rect.x + 30, stop_button_rect.y + 10))
 
 def draw_display():
     screen.fill((30, 30, 30))  # default background
     if not display_enabled:
-        label = font.render("Display stopped (Press Start button)", True, (200, 200, 200))
+        label = font.render("Press Start to begin", True, (200, 200, 200))
     elif current_distance is None:
         label = font.render("Waiting for data...", True, (200, 200, 200))
     else:
@@ -73,6 +73,7 @@ def draw_display():
                 text = f"Far ({d} cm)"
             screen.fill(color)
             label = font.render(text, True, (0, 0, 0))
+
     screen.blit(label, (40, SCREEN_SIZE[1]//2 - 24))
     draw_buttons()
     pygame.display.flip()
@@ -91,7 +92,7 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     global current_distance
-    if display_enabled:  # <--- Only update when started
+    if display_enabled:  # Only update when started
         payload = msg.payload.decode(errors='ignore').strip()
         try:
             current_distance = int(payload)
@@ -133,7 +134,7 @@ def try_connect():
 # Initial connection
 try_connect()
 
-# --- Main loop with reconnect handling ---
+# --- Main loop ---
 try:
     while True:
         for event in pygame.event.get():
@@ -147,10 +148,10 @@ try:
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = event.pos
-                if start_button_rect.collidepoint(mouse_pos):
+                if not display_enabled and start_button_rect.collidepoint(mouse_pos):
                     display_enabled = True
                     print("Distance display started.")
-                elif stop_button_rect.collidepoint(mouse_pos):
+                elif display_enabled and stop_button_rect.collidepoint(mouse_pos):
                     display_enabled = False
                     print("Distance display stopped.")
 
