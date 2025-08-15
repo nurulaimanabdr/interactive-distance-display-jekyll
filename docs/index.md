@@ -18,4 +18,4 @@
 - [Raspberry Pi code explanation](./rpi_code.md)
 - [Troubleshooting](./troubleshooting.md)
 
-![Step-by-Step](/docs/assets/step-by-step.png)  
+![Step-by-Step](docs/assets/step_by_step.png)  
