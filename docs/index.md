@@ -17,3 +17,5 @@
 - [ESP32 code explanation](./esp32_code.md)
 - [Raspberry Pi code explanation](./rpi_code.md)
 - [Troubleshooting](./troubleshooting.md)
+
+![Step-by-Step](/docs/assets/step-by-step.png)  
